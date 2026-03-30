@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Flip Clock" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="manifest.json" />
+  <title>Flip Clock</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Share+Tech+Mono&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: #0a0a0a;
+      overflow: hidden;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100dvh;
+    }
+
+    /* Portrait warning */
+    #portrait-warning {
+      display: none;
+      position: fixed; inset: 0;
+      background: #0a0a0a;
+      z-index: 9999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1.2rem;
+      color: #444;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+    #portrait-warning svg { opacity: 0.35; animation: rotHint 2.2s ease-in-out infinite; }
+    @keyframes rotHint { 0%,100%{transform:rotate(0deg)} 50%{transform:rotate(90deg)} }
+    @media (orientation: portrait) { #portrait-warning { display: flex; } }
+
+    /* ── App shell ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100dvh;
+    }
+
+    /* ── Meta bar (date / day / ampm) ── */
+    #meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .meta-item {
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.18em;
+      color: #3c3c3c;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    /* ── Clock row ── */
+    #clock {
+      display: flex;
+      align-items: center;
+    }
+    .colon {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .colon-dot {
+      background: #252525;
+      border-radius: 50%;
+    }
+    .digit-pair { display: flex; }
+
+    /* ══════════════════════════════════════
+       FLIP CARD  — sizing via CSS vars set from JS
+    ══════════════════════════════════════ */
+    .flip-card {
+      position: relative;
+      width:  var(--cw);
+      height: var(--ch);
+      flex-shrink: 0;
+    }
+    .plate {
+      position: absolute;
+      left: 0; right: 0;
+      overflow: hidden;
+    }
+    .plate-top {
+      top: 0; height: 50%;
+      background: #1d1d1d;
+      border-radius: var(--cr) var(--cr) 0 0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.55);
+    }
+    .plate-bot {
+      bottom: 0; height: 50%;
+      background: #141414;
+      border-radius: 0 0 var(--cr) var(--cr);
+      box-shadow: inset 0 1px 0 rgba(0,0,0,0.6), inset 0 -1px 0 rgba(255,255,255,0.02);
+    }
+    .digit-wrap {
+      position: absolute;
+      left: 0; right: 0;
+      height: var(--ch);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .plate-top .digit-wrap { top: 0; }
+    .plate-bot .digit-wrap { top: calc(var(--ch) * -0.5); }
+    .digit-wrap .d {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: var(--fs);
+      line-height: 1;
+      color: #e6e6e6;
+      display: block;
+      text-align: center;
+      width: 100%;
+      text-shadow: 0 2px 20px rgba(0,0,0,0.85);
+      letter-spacing: -0.01em;
+    }
+    .hinge {
+      position: absolute;
+      top: calc(50% - 1px);
+      left: 0; right: 0;
+      height: 2px;
+      background: #0a0a0a;
+      z-index: 20;
+      box-shadow: 0 0 10px 3px #000;
+    }
+    .flip-card::before, .flip-card::after {
+      content: '';
+      position: absolute;
+      top: calc(50% - var(--rv));
+      width: calc(var(--rv)*2); height: calc(var(--rv)*2);
+      background: #0a0a0a;
+      border-radius: 50%;
+      z-index: 21;
+      box-shadow: 0 0 5px rgba(0,0,0,0.9);
+    }
+    .flip-card::before { left: -2px; }
+    .flip-card::after  { right: -2px; }
+
+    /* Leaves */
+    .leaf {
+      position: absolute;
+      left: 0; right: 0;
+      height: 50%;
+      overflow: hidden;
+      z-index: 10;
+    }
+    .leaf-top {
+      top: 0; background: #1d1d1d;
+      border-radius: var(--cr) var(--cr) 0 0;
+      transform-origin: bottom center;
+    }
+    .leaf-bot {
+      top: 50%; background: #141414;
+      border-radius: 0 0 var(--cr) var(--cr);
+      transform-origin: top center;
+      transform: rotateX(90deg);
+    }
+    .leaf-top .digit-wrap { top: 0; }
+    .leaf-bot .digit-wrap { top: calc(var(--ch) * -0.5); }
+    .leaf-shadow {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      border-radius: inherit;
+      opacity: 0;
+    }
+    .leaf-top .leaf-shadow { background: linear-gradient(to bottom, transparent 15%, rgba(0,0,0,0.65)); }
+    .leaf-bot .leaf-shadow { background: linear-gradient(to top,   transparent 15%, rgba(0,0,0,0.55)); }
+
+    @keyframes foldTop   { from{transform:rotateX(0deg)}   to{transform:rotateX(-90deg)} }
+    @keyframes revealBot { from{transform:rotateX(90deg)}  to{transform:rotateX(0deg)} }
+    @keyframes shTop { 0%{opacity:0} 55%{opacity:1} 100%{opacity:0} }
+    @keyframes shBot { 0%{opacity:.75} 100%{opacity:0} }
+
+    .flip-card.flipping .leaf-top          { animation: foldTop   0.22s cubic-bezier(.5,0,.6,1) forwards; }
+    .flip-card.flipping .leaf-bot          { animation: revealBot 0.22s cubic-bezier(.4,0,.5,1) .2s forwards; }
+    .flip-card.flipping .leaf-top .leaf-shadow { animation: shTop 0.22s ease forwards; }
+    .flip-card.flipping .leaf-bot .leaf-shadow { animation: shBot 0.22s ease .2s forwards; }
+
+    /* ══════════════════════════════════════
+       PRAYER BAR
+    ══════════════════════════════════════ */
+    #prayer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%; /* matched to clock width by JS */
+    }
+
+    /* Next prayer pill */
+    #next-prayer {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5em;
+    }
+    #prayer-name {
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.2em;
+      color: #888;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    #prayer-time-display {
+      font-family: 'Bebas Neue', sans-serif;
+      color: #c8c8c8;
+      letter-spacing: 0.04em;
+    }
+
+    /* Countdown */
+    #countdown-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0.5em;
+    }
+    #countdown-label {
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.18em;
+      color: #2e2e2e;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    #countdown {
+      font-family: 'Bebas Neue', sans-serif;
+      color: #555;
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+    }
+    /* Progress bar */
+    #progress-track {
+      background: #252525;
+      border: 1px solid #333;
+      border-radius: 99px;
+      overflow: visible;
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+      position: relative;
+    }
+    #progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #666, #888);
+      border-radius: 99px;
+      transition: width 1s linear;
+      box-shadow: 0 0 8px rgba(255,255,255,0.1);
+      position: relative;
+    }
+    #progress-indicator {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 12px;
+      height: 12px;
+      background: #fff;
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255,255,255,0.8);
+      right: 0;
+    }
+    #progress-start, #progress-end {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      width: 8px;
+      height: 8px;
+      background: #fff;
+      box-shadow: 0 0 6px rgba(255,255,255,0.6);
+    }
+    #progress-start { left: 0; }
+    #progress-end { right: 0; }
+
+    /* Scanline */
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(to bottom, transparent 0, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+      pointer-events: none;
+      z-index: 1000;
+    }
+  </style>
+</head>
+<body>
+
+<div id="portrait-warning">
+  <svg width="44" height="44" viewBox="0 0 44 44" fill="none">
+    <rect x="8" y="4" width="28" height="36" rx="4" stroke="#555" stroke-width="1.8"/>
+    <path d="M26 10 L36 20 L26 30" stroke="#555" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <span>Rotate to landscape</span>
+</div>
+
+<div id="app">
+  <div id="meta">
+    <span class="meta-item" id="date-el"></span>
+    <span class="meta-item" id="day-el"></span>
+    <span class="meta-item" id="ampm-el"></span>
+  </div>
+
+  <div id="clock">
+    <div class="digit-pair" id="hp"></div>
+    <div class="colon" id="col">
+      <div class="colon-dot"></div>
+      <div class="colon-dot"></div>
+    </div>
+    <div class="digit-pair" id="mp"></div>
+  </div>
+
+  <div id="prayer-bar">
+    <div id="next-prayer">
+      <span id="prayer-name">—</span>
+      <span id="prayer-time-display"></span>
+    </div>
+    <div id="progress-track">
+      <div id="progress-fill">
+        <div id="progress-indicator"></div>
+      </div>
+      <div id="progress-start"></div>
+      <div id="progress-end"></div>
+    </div>
+    <div id="countdown-wrap">
+      <span id="countdown-label">in</span>
+      <span id="countdown">—</span>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   PRAYER TIME CALCULATION  (Muslim World League method)
+   Pure JS — no external library needed.
+   Based on the standard sun-position algorithm used by MWL.
+════════════════════════════════════════════════════════════ */
+const MWL = { fajrAngle: 18, ishaAngle: 17 };
+const PRAYER_NAMES = ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'];
+
+function toRad(d) { return d * Math.PI / 180; }
+function toDeg(r) { return r * 180 / Math.PI; }
+function fixHour(h) { return h - 24 * Math.floor(h / 24); }
+function fixAngle(a) { return a - 360 * Math.floor(a / 360); }
+
+function sunPosition(jd) {
+  const D = jd - 2451545.0;
+  const g = fixAngle(357.529 + 0.98560028 * D);
+  const q = fixAngle(280.459 + 0.98564736 * D);
+  const L = fixAngle(q + 1.915 * Math.sin(toRad(g)) + 0.020 * Math.sin(toRad(2*g)));
+  const e = 23.439 - 0.00000036 * D;
+  const RA = toDeg(Math.atan2(Math.cos(toRad(e)) * Math.sin(toRad(L)), Math.cos(toRad(L)))) / 15;
+  const eqt = q/15 - fixHour(RA);
+  const dec = toDeg(Math.asin(Math.sin(toRad(e)) * Math.sin(toRad(L))));
+  return { dec, eqt };
+}
+
+function julianDate(year, month, day) {
+  if (month <= 2) { year -= 1; month += 12; }
+  const A = Math.floor(year / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (year + 4716)) + Math.floor(30.6001 * (month + 1)) + day + B - 1524.5;
+}
+
+function computePrayers(lat, lng, date) {
+  const jd  = julianDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  const tz  = -date.getTimezoneOffset() / 60;
+  const { dec, eqt } = sunPosition(jd);
+
+  const noon  = 12 - eqt - lng / 15 + (tz - lng / 15) + lng / 15;
+  // Simpler: solar noon in local time
+  const Dhuhr = 12 - lng/15 - eqt + tz;
+
+  function hourAngle(angle, sign) {
+    const cosH = (-Math.sin(toRad(angle)) - Math.sin(toRad(lat)) * Math.sin(toRad(dec)))
+               / (Math.cos(toRad(lat)) * Math.cos(toRad(dec)));
+    if (Math.abs(cosH) > 1) return null; // never rises/sets
+    return sign * toDeg(Math.acos(cosH)) / 15;
+  }
+
+  // Asr (Shafi'i shadow ratio = 1)
+  function asrHA() {
+    const t = toDeg(Math.atan(1 / (1 + Math.tan(toRad(Math.abs(lat - dec))))));
+    const cosH = (Math.sin(toRad(t)) - Math.sin(toRad(lat)) * Math.sin(toRad(dec)))
+               / (Math.cos(toRad(lat)) * Math.cos(toRad(dec)));
+    if (Math.abs(cosH) > 1) return null;
+    return toDeg(Math.acos(cosH)) / 15;
+  }
+
+  const fajrH    = hourAngle(MWL.fajrAngle, -1);
+  const sunriseH = hourAngle(0.833, -1);
+  const asrH     = asrHA();
+  const sunsetH  = hourAngle(0.833,  1);
+  const ishaH    = hourAngle(MWL.ishaAngle, 1);
+
+  const toHHMM = (base, offset) => {
+    if (offset === null) return null;
+    const total = base + offset;
+    const h = Math.floor(fixHour(total));
+    const m = Math.round((fixHour(total) - h) * 60);
+    return { h, m: m === 60 ? 0 : m, hAdj: m === 60 ? h + 1 : h };
+  };
+
+  return {
+    Fajr:    toHHMM(Dhuhr, fajrH),
+    Sunrise: toHHMM(Dhuhr, sunriseH),
+    Dhuhr:   { h: Math.floor(Dhuhr), m: Math.round((Dhuhr % 1) * 60), hAdj: Math.floor(Dhuhr) },
+    Asr:     toHHMM(Dhuhr, asrH),
+    Maghrib: toHHMM(Dhuhr, sunsetH),
+    Isha:    toHHMM(Dhuhr, ishaH),
+  };
+}
+
+/* ════════════════════════════════════════════════════════════
+   NEXT PRAYER LOGIC
+════════════════════════════════════════════════════════════ */
+let prayerTimes = null;   // { Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha } each {h,m}
+let prayerDate  = null;   // the date prayerTimes was computed for
+let userLat = null, userLng = null;
+let prayerIntervalStartSec = 0; // seconds between prev prayer and next
+
+const PRAYER_ORDER = ['Fajr','Sunrise','Dhuhr','Asr','Maghrib','Isha'];
+
+function prayerToMinutes(p) {
+  // returns minutes from midnight
+  if (!p) return null;
+  const h = p.hAdj !== undefined ? p.hAdj : p.h;
+  return h * 60 + p.m;
+}
+
+function getNextPrayer(now) {
+  if (!prayerTimes) return null;
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  // skip Sunrise from display (not a salah)
+  const salawat = PRAYER_ORDER.filter(n => n !== 'Sunrise');
+
+  for (let i = 0; i < salawat.length; i++) {
+    const name = salawat[i];
+    const pm = prayerToMinutes(prayerTimes[name]);
+    if (pm === null) continue;
+    if (pm > nowMins) {
+      const prevName = salawat[i - 1] || 'Isha'; // wrap
+      const prevPm   = i > 0 ? prayerToMinutes(prayerTimes[salawat[i-1]]) : 0;
+      prayerIntervalStartSec = (pm - (prevPm || 0)) * 60;
+      return { name, h: prayerTimes[name].hAdj ?? prayerTimes[name].h, m: prayerTimes[name].m, totalMins: pm };
+    }
+  }
+  // After Isha → next day's Fajr
+  return null; // handled by fetching tomorrow
+}
+
+function fmtCountdown(totalSecs) {
+  if (totalSecs <= 0) return '00:00:00';
+  const h = Math.floor(totalSecs / 3600);
+  const m = Math.floor((totalSecs % 3600) / 60);
+  const s = totalSecs % 60;
+  if (h > 0) return `${pad(h)}:${pad(m)}:${pad(s)}`;
+  return `${pad(m)}:${pad(s)}`;
+}
+
+function updatePrayerUI(now) {
+  const next = getNextPrayer(now);
+  if (!next) {
+    document.getElementById('prayer-name').textContent = 'Fajr';
+    document.getElementById('prayer-time-display').textContent = '—';
+    document.getElementById('countdown').textContent = '—';
+    return;
+  }
+
+  const h12 = next.h % 12 || 12;
+  const ampm = next.h < 12 ? 'AM' : 'PM';
+  document.getElementById('prayer-name').textContent = next.name;
+  document.getElementById('prayer-time-display').textContent = `${pad(h12)}:${pad(next.m)} ${ampm}`;
+
+  const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+  const targetSecs = next.totalMins * 60;
+  let remaining = targetSecs - nowSecs;
+  if (remaining < 0) remaining += 86400;
+
+  document.getElementById('countdown').textContent = fmtCountdown(remaining);
+
+  // Progress bar: elapsed fraction of interval
+  const elapsed = prayerIntervalStartSec > 0
+    ? Math.max(0, 1 - remaining / prayerIntervalStartSec)
+    : 0;
+  document.getElementById('progress-fill').style.width = (elapsed * 100).toFixed(1) + '%';
+}
+
+async function fetchPrayers(lat, lng) {
+  try {
+    const today = new Date();
+    const d = today.getDate(), mo = today.getMonth() + 1, y = today.getFullYear();
+    // AlAdhan API — method 3 = Muslim World League
+    const url = `https://api.aladhan.com/v1/timings/${d}-${mo}-${y}?latitude=${lat}&longitude=${lng}&method=3`;
+    const res  = await fetch(url);
+    const json = await res.json();
+    if (json.code === 200) {
+      const t = json.data.timings;
+      // Parse "HH:MM" strings into {h,m,hAdj}
+      const parse = str => {
+        if (!str) return null;
+        const [h, m] = str.split(':').map(Number);
+        return { h, m, hAdj: h };
+      };
+      prayerTimes = {
+        Fajr:    parse(t.Fajr),
+        Sunrise: parse(t.Sunrise),
+        Dhuhr:   parse(t.Dhuhr),
+        Asr:     parse(t.Asr),
+        Maghrib: parse(t.Maghrib),
+        Isha:    parse(t.Isha),
+      };
+      prayerDate = `${y}-${mo}-${d}`;
+      document.getElementById('prayer-name').style.color = '#666';
+    }
+  } catch {
+    // Fallback: compute locally
+    const times = computePrayers(lat, lng, new Date());
+    prayerTimes = times;
+    prayerDate = new Date().toDateString();
+  }
+}
+
+function initPrayers() {
+  if (!navigator.geolocation) {
+    // Default to Mecca if geolocation unavailable
+    userLat = 21.3891; userLng = 39.8579;
+    fetchPrayers(userLat, userLng);
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+      fetchPrayers(userLat, userLng);
+    },
+    () => {
+      // Permission denied → compute locally with null island fallback or just compute
+      userLat = 21.3891; userLng = 39.8579;
+      fetchPrayers(userLat, userLng);
+    },
+    { timeout: 8000 }
+  );
+}
+
+/* ════════════════════════════════════════════════════════════
+   FLIP CARD ENGINE
+════════════════════════════════════════════════════════════ */
+const pad = n => String(n).padStart(2,'0');
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function makeCard() {
+  const el = document.createElement('div');
+  el.className = 'flip-card';
+  el.innerHTML = `
+    <div class="plate plate-top"><div class="digit-wrap"><span class="d st"></span></div></div>
+    <div class="plate plate-bot"><div class="digit-wrap"><span class="d sb"></span></div></div>
+    <div class="hinge"></div>
+    <div class="leaf leaf-top"><div class="digit-wrap"><span class="d lt"></span></div><div class="leaf-shadow"></div></div>
+    <div class="leaf leaf-bot"><div class="digit-wrap"><span class="d lb"></span></div><div class="leaf-shadow"></div></div>
+  `;
+  el._val = null; el._busy = false;
+  return el;
+}
+
+function setCard(card, newVal, animate) {
+  const v = String(newVal);
+  if (card._val === v) return;
+  const prev = card._val ?? v;
+  card._val = v;
+  card.querySelector('.st').textContent = v;
+  card.querySelector('.sb').textContent = v;
+  if (!animate || card._busy) {
+    card.querySelector('.lt').textContent = v;
+    card.querySelector('.lb').textContent = v;
+    return;
+  }
+  card.querySelector('.lt').textContent = prev;
+  card.querySelector('.lb').textContent = v;
+  card._busy = true;
+  card.classList.add('flipping');
+  setTimeout(() => {
+    card.classList.remove('flipping');
+    card._busy = false;
+    card.querySelector('.lt').textContent = v;
+    card.querySelector('.lb').textContent = v;
+  }, 460);
+}
+
+function buildPair(id) {
+  const wrap = document.getElementById(id);
+  const a = makeCard(), b = makeCard();
+  wrap.appendChild(a); wrap.appendChild(b);
+  return [a, b];
+}
+
+const HP = buildPair('hp');
+const MP = buildPair('mp');
+const allCards = [...HP, ...MP];
+
+/* ════════════════════════════════════════════════════════════
+   LAYOUT ENGINE — JS-driven, fills viewport
+════════════════════════════════════════════════════════════ */
+function layout() {
+  const VW = window.innerWidth;
+  const VH = window.innerHeight;
+
+  const margin = Math.max(10, Math.round(Math.min(VW, VH) * 0.032));
+
+  const usableW = VW - margin * 2;
+  const usableH = VH - margin * 2;
+
+  // Rows: meta | clock | prayer — proportions
+  const metaH   = Math.round(usableH * 0.075);
+  const prayerH = Math.round(usableH * 0.11);
+  const gapV    = Math.round(usableH * 0.035);
+  const clockH  = usableH - metaH - prayerH - gapV * 2;
+
+  // Card sizing
+  const cardAspect = 0.72;
+  const colonW     = Math.round(usableW * 0.04);
+  const pairGap    = Math.round(usableW * 0.005);
+  const clockGapH  = Math.round(usableW * 0.025);
+  const cardsW     = usableW - colonW - clockGapH * 2 - pairGap * 2;
+  const cardFromW  = cardsW / 4;
+  const cardH      = Math.min(clockH, cardFromW / cardAspect);
+  const cardW      = Math.round(cardH * cardAspect);
+  const ch         = Math.round(cardH);
+  const fs         = ch;
+  const cr         = Math.max(4, Math.round(ch * 0.035));
+  const rv         = Math.max(3, Math.round(ch * 0.022));
+
+  allCards.forEach(card => {
+    card.style.setProperty('--cw', cardW + 'px');
+    card.style.setProperty('--ch', ch + 'px');
+    card.style.setProperty('--fs', fs + 'px');
+    card.style.setProperty('--cr', cr + 'px');
+    card.style.setProperty('--rv', rv + 'px');
+  });
+
+  document.getElementById('hp').style.gap = pairGap + 'px';
+  document.getElementById('mp').style.gap = pairGap + 'px';
+  document.getElementById('clock').style.gap = clockGapH + 'px';
+
+  const dotSize = Math.max(5, Math.round(ch * 0.06));
+  const dotGap  = Math.round(ch * 0.12);
+  const col = document.getElementById('col');
+  col.style.gap = dotGap + 'px';
+  col.querySelectorAll('.colon-dot').forEach(d => {
+    d.style.width  = dotSize + 'px';
+    d.style.height = dotSize + 'px';
+  });
+
+  // Compute clock row width for aligning meta and prayer bars
+  const clockWidth = cardW * 4 + pairGap * 2 + clockGapH * 2 + colonW;
+
+  const app = document.getElementById('app');
+  app.style.gap     = gapV + 'px';
+  app.style.padding = `${margin}px ${margin}px`;
+
+  const metaFontSize = Math.max(9, Math.round(metaH * 0.65));
+  const meta = document.getElementById('meta');
+  meta.style.width = clockWidth + 'px';
+  document.querySelectorAll('.meta-item').forEach(el => {
+    el.style.fontSize = metaFontSize + 'px';
+  });
+
+  // Prayer bar sizing
+  const pb = document.getElementById('prayer-bar');
+  pb.style.width = clockWidth + 'px';
+
+  const prayerNameSize   = Math.max(8, Math.round(prayerH * 0.38));
+  const prayerTimeSize   = Math.max(10, Math.round(prayerH * 0.72));
+  const countdownSize    = Math.max(10, Math.round(prayerH * 0.68));
+  const countdownLblSize = Math.max(7,  Math.round(prayerH * 0.3));
+
+  document.getElementById('prayer-name').style.fontSize        = prayerNameSize + 'px';
+  document.getElementById('prayer-time-display').style.fontSize = prayerTimeSize + 'px';
+  document.getElementById('countdown').style.fontSize          = countdownSize + 'px';
+  document.getElementById('countdown-label').style.fontSize    = countdownLblSize + 'px';
+
+  const trackH = Math.max(6, Math.round(prayerH * 0.15));
+  const trackW = Math.round(clockWidth * 0.35);
+  const track  = document.getElementById('progress-track');
+  track.style.width  = trackW + 'px';
+  track.style.height = trackH + 'px';
+}
+
+window.addEventListener('resize', layout);
+window.addEventListener('orientationchange', () => setTimeout(layout, 120));
+
+/* ════════════════════════════════════════════════════════════
+   CLOCK TICK
+════════════════════════════════════════════════════════════ */
+let ph = -1, pm_ = -1;
+
+function tick(init) {
+  const now  = new Date();
+  const h24  = now.getHours();
+  const h12  = h24 % 12 || 12;
+  const m    = now.getMinutes();
+  const anim = !init;
+
+  if (h24 !== ph) {
+    const hs = pad(h12);
+    setCard(HP[0], hs[0], anim);
+    setCard(HP[1], hs[1], anim);
+    document.getElementById('ampm-el').textContent = h24 < 12 ? 'AM' : 'PM';
+    ph = h24;
+    // Re-fetch prayers at midnight
+    if (h24 === 0 && m === 0 && userLat) fetchPrayers(userLat, userLng);
+  }
+  if (m !== pm_) {
+    const ms = pad(m);
+    setCard(MP[0], ms[0], anim);
+    setCard(MP[1], ms[1], anim);
+    pm_ = m;
+  }
+  if (init) {
+    document.getElementById('date-el').textContent =
+      `${pad(now.getMonth()+1)} · ${pad(now.getDate())} · ${String(now.getFullYear()).slice(-2)}`;
+    document.getElementById('day-el').textContent = DAYS[now.getDay()];
+    document.getElementById('ampm-el').textContent = h24 < 12 ? 'AM' : 'PM';
+  }
+
+  updatePrayerUI(now);
+}
+
+/* ── Boot ── */
+document.fonts.ready.then(() => {
+  layout();
+  tick(true);
+  // Tick every second for countdown
+  setInterval(tick, 1000);
+});
+
+initPrayers();
+
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
