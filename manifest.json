@@ -1,8 +1,9 @@
 {
-  "name": "Flip Clock",
+  "name": "Flip Clock with Prayer Times",
   "short_name": "FlipClock",
-  "description": "Minimal black flip clock",
-  "start_url": "/index.html",
+  "description": "Beautiful flip clock with Islamic prayer times and countdown",
+  "start_url": "./index.html",
+  "scope": ".",
   "display": "fullscreen",
   "orientation": "landscape",
   "background_color": "#0a0a0a",
