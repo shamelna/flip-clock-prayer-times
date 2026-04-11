@@ -60,11 +60,61 @@
       height: 100dvh;
     }
 
-    /* ── Meta bar (date / day / ampm) ── */
-    #meta {
+    /* ── Top bar with weather, clock, date ── */
+    #top-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      width: 100%;
+      padding: 0 2rem;
+    }
+    #weather-section {
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      flex: 1;
+    }
+    #weather-icon {
+      font-size: 2.5rem;
+      line-height: 1;
+    }
+    #weather-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.2rem;
+    }
+    #weather-temp {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      color: #e6e6e6;
+      letter-spacing: 0.05em;
+    }
+    #weather-desc {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7rem;
+      color: #666;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    #clock-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 2;
+    }
+    #ampm-el {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1rem;
+      color: #3c3c3c;
+      letter-spacing: 0.2em;
+      margin-bottom: 0.5rem;
+    }
+    #date-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.3rem;
+      flex: 1;
     }
     .meta-item {
       font-family: 'Share Tech Mono', monospace;
@@ -73,6 +123,8 @@
       text-transform: uppercase;
       white-space: nowrap;
     }
+    #day-el { font-size: 0.9rem; }
+    #date-el { font-size: 0.8rem; color: #555; }
 
     /* ── Clock row ── */
     #clock {
@@ -200,20 +252,24 @@
     .flip-card.flipping .leaf-bot .leaf-shadow { animation: shBot 0.22s ease .2s forwards; }
 
     /* ══════════════════════════════════════
-       PRAYER BAR
+       PROGRESS CONTAINER
     ══════════════════════════════════════ */
-    #prayer-bar {
+    #progress-container {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      width: 100%; /* matched to clock width by JS */
+      justify-content: center;
+      gap: 3rem;
+      width: 100%;
+      max-width: 900px;
     }
 
     /* Previous prayer pill */
     #prev-prayer {
       display: flex;
-      align-items: baseline;
-      gap: 0.5em;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.3em;
+      min-width: 120px;
     }
     #prev-prayer-label, #next-prayer-label {
       font-family: 'Share Tech Mono', monospace;
@@ -239,8 +295,10 @@
     /* Next prayer pill */
     #next-prayer {
       display: flex;
-      align-items: baseline;
-      gap: 0.5em;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.3em;
+      min-width: 120px;
     }
     #prayer-name {
       font-family: 'Share Tech Mono', monospace;
@@ -344,22 +402,32 @@
 </div>
 
 <div id="app">
-  <div id="meta">
-    <span class="meta-item" id="date-el"></span>
-    <span class="meta-item" id="day-el"></span>
-    <span class="meta-item" id="ampm-el"></span>
-  </div>
-
-  <div id="clock">
-    <div class="digit-pair" id="hp"></div>
-    <div class="colon" id="col">
-      <div class="colon-dot"></div>
-      <div class="colon-dot"></div>
+  <div id="top-bar">
+    <div id="weather-section">
+      <div id="weather-icon">☀</div>
+      <div id="weather-info">
+        <span id="weather-temp">--°</span>
+        <span id="weather-desc">--</span>
+      </div>
     </div>
-    <div class="digit-pair" id="mp"></div>
+    <div id="clock-container">
+      <div id="ampm-el" class="meta-item"></div>
+      <div id="clock">
+        <div class="digit-pair" id="hp"></div>
+        <div class="colon" id="col">
+          <div class="colon-dot"></div>
+          <div class="colon-dot"></div>
+        </div>
+        <div class="digit-pair" id="mp"></div>
+      </div>
+    </div>
+    <div id="date-section">
+      <span class="meta-item" id="day-el"></span>
+      <span class="meta-item" id="date-el"></span>
+    </div>
   </div>
 
-  <div id="prayer-bar">
+  <div id="progress-container">
     <div id="prev-prayer">
       <span id="prev-prayer-label">Previous</span>
       <span id="prev-prayer-name">—</span>
@@ -610,6 +678,7 @@ function initPrayers() {
     // Default to Mecca if geolocation unavailable
     userLat = 21.3891; userLng = 39.8579;
     fetchPrayers(userLat, userLng);
+    fetchWeather(userLat, userLng);
     return;
   }
   navigator.geolocation.getCurrentPosition(
@@ -617,14 +686,74 @@ function initPrayers() {
       userLat = pos.coords.latitude;
       userLng = pos.coords.longitude;
       fetchPrayers(userLat, userLng);
+      fetchWeather(userLat, userLng);
     },
     () => {
       // Permission denied → compute locally with null island fallback or just compute
       userLat = 21.3891; userLng = 39.8579;
       fetchPrayers(userLat, userLng);
+      fetchWeather(userLat, userLng);
     },
     { timeout: 8000 }
   );
+}
+
+/* ════════════════════════════════════════════════════════════
+   WEATHER API
+════════════════════════════════════════════════════════════ */
+const WEATHER_ICONS = {
+  'Clear': '☀',
+  'Clouds': '☁',
+  'Rain': '🌧',
+  'Drizzle': '🌦',
+  'Thunderstorm': '⛈',
+  'Snow': '❄',
+  'Mist': '🌫',
+  'Fog': '🌫',
+  'Haze': '🌫',
+  'Dust': '🌫',
+  'Sand': '🌫',
+  'Tornado': '🌪',
+  'Squall': '💨'
+};
+
+async function fetchWeather(lat, lng) {
+  try {
+    // Using Open-Meteo free API (no API key required)
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current_weather=true`;
+    const res = await fetch(url);
+    const json = await res.json();
+    
+    if (json.current_weather) {
+      const temp = Math.round(json.current_weather.temperature);
+      const code = json.current_weather.weathercode;
+      const condition = getWeatherCondition(code);
+      const icon = WEATHER_ICONS[condition] || '🌡';
+      
+      document.getElementById('weather-icon').textContent = icon;
+      document.getElementById('weather-temp').textContent = `${temp}°`;
+      document.getElementById('weather-desc').textContent = condition;
+    }
+  } catch (e) {
+    console.log('Weather fetch failed:', e);
+    document.getElementById('weather-icon').textContent = '🌡';
+    document.getElementById('weather-temp').textContent = '--°';
+    document.getElementById('weather-desc').textContent = 'N/A';
+  }
+}
+
+function getWeatherCondition(code) {
+  // WMO Weather interpretation codes
+  if (code === 0) return 'Clear';
+  if (code >= 1 && code <= 3) return 'Clouds';
+  if (code >= 45 && code <= 48) return 'Fog';
+  if (code >= 51 && code <= 55) return 'Drizzle';
+  if (code >= 61 && code <= 65) return 'Rain';
+  if (code >= 71 && code <= 77) return 'Snow';
+  if (code >= 80 && code <= 82) return 'Rain';
+  if (code >= 85 && code <= 86) return 'Snow';
+  if (code >= 95 && code <= 99) return 'Thunderstorm';
+  return 'Clear';
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -735,23 +864,15 @@ function layout() {
     d.style.height = dotSize + 'px';
   });
 
-  // Compute clock row width for aligning meta and prayer bars
+  // Compute clock row width
   const clockWidth = cardW * 4 + pairGap * 2 + clockGapH * 2 + colonW;
 
   const app = document.getElementById('app');
   app.style.gap     = gapV + 'px';
   app.style.padding = `${margin}px ${margin}px`;
 
-  const metaFontSize = Math.max(9, Math.round(metaH * 0.65));
-  const meta = document.getElementById('meta');
-  meta.style.width = clockWidth + 'px';
-  document.querySelectorAll('.meta-item').forEach(el => {
-    el.style.fontSize = metaFontSize + 'px';
-  });
-
-  // Prayer bar sizing
-  const pb = document.getElementById('prayer-bar');
-  pb.style.width = clockWidth + 'px';
+  // Progress container sizing
+  const pb = document.getElementById('progress-container');
 
   const prayerNameSize   = Math.max(8, Math.round(prayerH * 0.38));
   const prayerTimeSize   = Math.max(10, Math.round(prayerH * 0.72));
