@@ -676,12 +676,16 @@ async function fetchPrayers(lat, lng) {
       };
       prayerDate = `${y}-${mo}-${d}`;
       document.getElementById('prayer-name').style.color = '#666';
+      // Trigger UI update now that we have prayer data
+      updatePrayerUI(new Date());
     }
   } catch {
     // Fallback: compute locally
     const times = computePrayers(lat, lng, new Date());
     prayerTimes = times;
     prayerDate = new Date().toDateString();
+    // Trigger UI update with local data
+    updatePrayerUI(new Date());
   }
 }
 
