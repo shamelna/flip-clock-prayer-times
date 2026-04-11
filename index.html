@@ -58,6 +58,10 @@
       justify-content: center;
       width: 100%;
       height: 100dvh;
+      max-height: 100dvh;
+      overflow: hidden;
+      padding: 1rem;
+      box-sizing: border-box;
     }
 
     /* ── Top bar with weather above clock, date on right ── */
@@ -889,6 +893,8 @@ function layout() {
 
   document.getElementById('prayer-name').style.fontSize        = prayerNameSize + 'px';
   document.getElementById('prayer-time-display').style.fontSize = prayerTimeSize + 'px';
+  document.getElementById('prev-prayer-name').style.fontSize   = prayerNameSize + 'px';
+  document.getElementById('prev-prayer-time').style.fontSize   = prayerTimeSize + 'px';
   document.getElementById('countdown').style.fontSize          = countdownSize + 'px';
   document.getElementById('countdown-label').style.fontSize    = countdownLblSize + 'px';
 
@@ -897,6 +903,10 @@ function layout() {
   const track  = document.getElementById('progress-track');
   track.style.width  = trackW + 'px';
   track.style.height = trackH + 'px';
+
+  // Weather icon sizing based on card height
+  const weatherIconSize = Math.max(20, Math.round(ch * 0.15));
+  document.getElementById('weather-icon').style.fontSize = weatherIconSize + 'px';
 }
 
 window.addEventListener('resize', layout);
