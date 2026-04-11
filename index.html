@@ -60,38 +60,46 @@
       height: 100dvh;
     }
 
-    /* ── Top bar with weather, clock, date ── */
+    /* ── Top bar with weather above clock, date on right ── */
     #top-bar {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       justify-content: space-between;
       width: 100%;
       padding: 0 2rem;
     }
-    #weather-section {
+    #clock-area {
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 0.8rem;
       flex: 1;
     }
+    #weather-above {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-bottom: 0.5rem;
+      align-self: flex-start;
+      margin-left: calc(50% - 250px);
+    }
     #weather-icon {
-      font-size: 2.5rem;
+      font-size: 1.8rem;
       line-height: 1;
     }
     #weather-info {
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
+      gap: 0.1rem;
     }
     #weather-temp {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: 1.8rem;
+      font-size: 1.4rem;
       color: #e6e6e6;
       letter-spacing: 0.05em;
     }
     #weather-desc {
       font-family: 'Share Tech Mono', monospace;
-      font-size: 0.7rem;
+      font-size: 0.6rem;
       color: #666;
       text-transform: uppercase;
       letter-spacing: 0.1em;
@@ -100,7 +108,6 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      flex: 2;
     }
     #ampm-el {
       font-family: 'Share Tech Mono', monospace;
@@ -114,7 +121,6 @@
       flex-direction: column;
       align-items: flex-end;
       gap: 0.3rem;
-      flex: 1;
     }
     .meta-item {
       font-family: 'Share Tech Mono', monospace;
@@ -403,22 +409,24 @@
 
 <div id="app">
   <div id="top-bar">
-    <div id="weather-section">
-      <div id="weather-icon">☀</div>
-      <div id="weather-info">
-        <span id="weather-temp">--°</span>
-        <span id="weather-desc">--</span>
-      </div>
-    </div>
-    <div id="clock-container">
-      <div id="ampm-el" class="meta-item"></div>
-      <div id="clock">
-        <div class="digit-pair" id="hp"></div>
-        <div class="colon" id="col">
-          <div class="colon-dot"></div>
-          <div class="colon-dot"></div>
+    <div id="clock-area">
+      <div id="weather-above">
+        <div id="weather-icon">☀</div>
+        <div id="weather-info">
+          <span id="weather-temp">--°</span>
+          <span id="weather-desc">--</span>
         </div>
-        <div class="digit-pair" id="mp"></div>
+      </div>
+      <div id="clock-container">
+        <div id="ampm-el" class="meta-item"></div>
+        <div id="clock">
+          <div class="digit-pair" id="hp"></div>
+          <div class="colon" id="col">
+            <div class="colon-dot"></div>
+            <div class="colon-dot"></div>
+          </div>
+          <div class="digit-pair" id="mp"></div>
+        </div>
       </div>
     </div>
     <div id="date-section">
