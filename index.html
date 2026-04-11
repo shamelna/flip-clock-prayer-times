@@ -209,6 +209,33 @@
       width: 100%; /* matched to clock width by JS */
     }
 
+    /* Previous prayer pill */
+    #prev-prayer {
+      display: flex;
+      align-items: baseline;
+      gap: 0.5em;
+    }
+    #prev-prayer-label, #next-prayer-label {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.7em;
+      letter-spacing: 0.15em;
+      color: #444;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    #prev-prayer-name {
+      font-family: 'Share Tech Mono', monospace;
+      letter-spacing: 0.2em;
+      color: #666;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    #prev-prayer-time {
+      font-family: 'Bebas Neue', sans-serif;
+      color: #888;
+      letter-spacing: 0.04em;
+    }
+
     /* Next prayer pill */
     #next-prayer {
       display: flex;
@@ -333,9 +360,10 @@
   </div>
 
   <div id="prayer-bar">
-    <div id="next-prayer">
-      <span id="prayer-name">—</span>
-      <span id="prayer-time-display"></span>
+    <div id="prev-prayer">
+      <span id="prev-prayer-label">Previous</span>
+      <span id="prev-prayer-name">—</span>
+      <span id="prev-prayer-time"></span>
     </div>
     <div id="progress-section">
       <div id="progress-track">
@@ -349,6 +377,11 @@
         <span id="countdown-label">in</span>
         <span id="countdown">—</span>
       </div>
+    </div>
+    <div id="next-prayer">
+      <span id="next-prayer-label">Next</span>
+      <span id="prayer-name">—</span>
+      <span id="prayer-time-display"></span>
     </div>
   </div>
 </div>
@@ -464,9 +497,24 @@ function getNextPrayer(now) {
     if (pm === null) continue;
     if (pm > nowMins) {
       const prevName = salawat[i - 1] || 'Isha'; // wrap
-      const prevPm   = i > 0 ? prayerToMinutes(prayerTimes[salawat[i-1]]) : 0;
+      const prevPm   = i > 0 ? prayerToMinutes(prayerTimes[salawat[i-1]]) : prayerToMinutes(prayerTimes.Isha);
       prayerIntervalStartSec = (pm - (prevPm || 0)) * 60;
-      return { name, h: prayerTimes[name].hAdj ?? prayerTimes[name].h, m: prayerTimes[name].m, totalMins: pm };
+      
+      // Build previous prayer data
+      const prevPrayerData = i > 0 ? {
+        name: salawat[i-1],
+        h: prayerTimes[salawat[i-1]].hAdj ?? prayerTimes[salawat[i-1]].h,
+        m: prayerTimes[salawat[i-1]].m
+      } : {
+        name: 'Isha',
+        h: prayerTimes.Isha.hAdj ?? prayerTimes.Isha.h,
+        m: prayerTimes.Isha.m
+      };
+      
+      return { 
+        next: { name, h: prayerTimes[name].hAdj ?? prayerTimes[name].h, m: prayerTimes[name].m, totalMins: pm },
+        prev: prevPrayerData
+      };
     }
   }
   // After Isha → next day's Fajr
@@ -483,18 +531,30 @@ function fmtCountdown(totalSecs) {
 }
 
 function updatePrayerUI(now) {
-  const next = getNextPrayer(now);
-  if (!next) {
+  const prayers = getNextPrayer(now);
+  if (!prayers) {
     document.getElementById('prayer-name').textContent = 'Fajr';
     document.getElementById('prayer-time-display').textContent = '—';
+    document.getElementById('prev-prayer-name').textContent = '—';
+    document.getElementById('prev-prayer-time').textContent = '—';
     document.getElementById('countdown').textContent = '—';
     return;
   }
 
+  const next = prayers.next;
+  const prev = prayers.prev;
+
+  // Update next prayer
   const h12 = next.h % 12 || 12;
   const ampm = next.h < 12 ? 'AM' : 'PM';
   document.getElementById('prayer-name').textContent = next.name;
   document.getElementById('prayer-time-display').textContent = `${pad(h12)}:${pad(next.m)} ${ampm}`;
+
+  // Update previous prayer
+  const prevH12 = prev.h % 12 || 12;
+  const prevAmpm = prev.h < 12 ? 'AM' : 'PM';
+  document.getElementById('prev-prayer-name').textContent = prev.name;
+  document.getElementById('prev-prayer-time').textContent = `${pad(prevH12)}:${pad(prev.m)} ${prevAmpm}`;
 
   const nowSecs = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
   const targetSecs = next.totalMins * 60;
