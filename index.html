@@ -228,6 +228,14 @@
       letter-spacing: 0.04em;
     }
 
+    /* Progress section - contains track and countdown */
+    #progress-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.4em;
+    }
+
     /* Countdown */
     #countdown-wrap {
       display: flex;
@@ -329,16 +337,18 @@
       <span id="prayer-name">—</span>
       <span id="prayer-time-display"></span>
     </div>
-    <div id="progress-track">
-      <div id="progress-fill">
-        <div id="progress-indicator"></div>
+    <div id="progress-section">
+      <div id="progress-track">
+        <div id="progress-fill">
+          <div id="progress-indicator"></div>
+        </div>
+        <div id="progress-start"></div>
+        <div id="progress-end"></div>
       </div>
-      <div id="progress-start"></div>
-      <div id="progress-end"></div>
-    </div>
-    <div id="countdown-wrap">
-      <span id="countdown-label">in</span>
-      <span id="countdown">—</span>
+      <div id="countdown-wrap">
+        <span id="countdown-label">in</span>
+        <span id="countdown">—</span>
+      </div>
     </div>
   </div>
 </div>
