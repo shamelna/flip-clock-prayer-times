@@ -598,7 +598,29 @@ function getNextPrayer(now) {
     }
   }
   // After Isha → next day's Fajr
-  return null; // handled by fetching tomorrow
+  // Previous prayer is Isha, next is tomorrow's Fajr
+  const ishaData = prayerTimes.Isha;
+  const fajrData = prayerTimes.Fajr;
+  if (ishaData && fajrData) {
+    const ishaPm = prayerToMinutes(ishaData);
+    const fajrPm = prayerToMinutes(fajrData) + 1440; // Add 24 hours for next day
+    prayerIntervalStartSec = (fajrPm - ishaPm) * 60;
+    
+    return {
+      next: { 
+        name: 'Fajr', 
+        h: fajrData.hAdj ?? fajrData.h, 
+        m: fajrData.m, 
+        totalMins: fajrPm 
+      },
+      prev: {
+        name: 'Isha',
+        h: ishaData.hAdj ?? ishaData.h,
+        m: ishaData.m
+      }
+    };
+  }
+  return null;
 }
 
 function fmtCountdown(totalSecs) {
