@@ -1,5 +1,19 @@
-const CACHE = 'flip-clock-v1';
-const ASSETS = ['/', '/index.html', '/manifest.json'];
+// ══════════════════════════════════════════════════════
+// CACHE VERSION — Increment this on every deploy
+// ══════════════════════════════════════════════════════
+const CACHE_VERSION = 19;
+const CACHE = `flip-clock-v${CACHE_VERSION}`;
+
+const ASSETS = [
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/Minshawi.mp3',
+  '/magpie 1.mp3',
+  '/takbirat.m4a',
+  '/Azkar.mp3',
+  '/icon-192.svg'
+];
 
 self.addEventListener('install', e => {
   e.waitUntil(
