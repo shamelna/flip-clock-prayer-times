@@ -1704,6 +1704,18 @@ function testWarning() {
   showVisualWarning();
 }
 
+// Test function - manually trigger Azkar
+function testAzkar() {
+  console.log('Manual Azkar test');
+  azkarAudio.currentTime = 0;
+  azkarAudio.play().catch(() => {
+    console.log('Azkar autoplay blocked - click page first');
+  });
+  azkarPlaying = true;
+  azkarLastPlayedDate = new Date().toDateString();
+  console.log('Azkar test triggered');
+}
+
 // Monitor countdown to trigger azan at zero
 function checkAzanTrigger(remainingSecs, prayerName) {
   // Trigger when countdown is 0 (or just crossed it: between 0 and 3 seconds)
